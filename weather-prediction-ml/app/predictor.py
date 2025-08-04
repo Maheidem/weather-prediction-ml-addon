@@ -15,7 +15,7 @@ class WeatherPredictor:
     """Weather prediction using ensemble ML models"""
     
     def __init__(self):
-        self.models_dir = Path('/app/models')
+        self.models_dir = Path('/models')
         self.models_loaded = False
         
         # Load models and configuration
