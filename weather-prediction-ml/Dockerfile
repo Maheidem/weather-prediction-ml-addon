@@ -5,8 +5,6 @@ FROM $BUILD_FROM
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    py3-numpy \
-    py3-scipy \
     gcc \
     g++ \
     python3-dev \
@@ -16,19 +14,16 @@ RUN apk add --no-cache \
     openblas-dev \
     lapack-dev \
     libgomp \
+    cmake \
     jq \
     curl
 
-# Create virtual environment
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Upgrade pip and install build tools
+RUN python3 -m pip install --upgrade pip setuptools wheel
 
-# Upgrade pip
-RUN pip install --upgrade pip setuptools wheel
-
-# Install Python ML packages
+# Install Python ML packages with specific versions
 COPY requirements.txt /
-RUN pip install --no-cache-dir -r /requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /requirements.txt
 
 # Copy application files
 COPY app /app
