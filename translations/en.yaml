@@ -1,0 +1,28 @@
+configuration:
+  mqtt_broker:
+    name: MQTT Broker
+    description: Hostname of the MQTT broker (usually core-mosquitto)
+  mqtt_port:
+    name: MQTT Port
+    description: Port of the MQTT broker
+  mqtt_username:
+    name: MQTT Username
+    description: Username for MQTT authentication
+  mqtt_password:
+    name: MQTT Password
+    description: Password for MQTT authentication
+  update_interval:
+    name: Update Interval
+    description: How often to make predictions (in seconds)
+  temperature_sensor:
+    name: Temperature Sensor
+    description: Entity ID of your temperature sensor
+  humidity_sensor:
+    name: Humidity Sensor
+    description: Entity ID of your humidity sensor
+  pressure_sensor:
+    name: Pressure Sensor
+    description: Entity ID of your pressure sensor
+  log_level:
+    name: Log Level
+    description: Logging verbosity level
