@@ -46,7 +46,8 @@ def main():
     ha_url = os.environ.get('HOMEASSISTANT_URL', 'http://supervisor/core')
     if ha_token and len(ha_token) > 100:  # Long-lived tokens are typically longer
         # This is likely a Long-Lived Access Token, use direct API
-        ha_url = 'http://homeassistant.local:8123'
+        # Use IP address as .local domains don't resolve in Docker containers
+        ha_url = 'http://192.168.31.114:8123'
         logger.info("Detected Long-Lived Access Token, using direct API access")
     
     config = {
