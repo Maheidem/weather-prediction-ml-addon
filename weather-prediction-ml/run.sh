@@ -28,13 +28,14 @@ export HUMIDITY_SENSOR
 export PRESSURE_SENSOR
 export LOG_LEVEL
 
-# Try to get the supervisor token using bashio
-if bashio::var.has_value "supervisor_token"; then
-    export SUPERVISOR_TOKEN=$(bashio::var.supervisor_token)
-    export HOMEASSISTANT_URL="http://supervisor/core"
-    bashio::log.info "Home Assistant API token obtained"
+# Get the supervisor token
+export SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN:-}"
+export HOMEASSISTANT_URL="http://supervisor/core"
+
+if [ -n "${SUPERVISOR_TOKEN}" ]; then
+    bashio::log.info "Home Assistant API token available"
 else
-    bashio::log.warning "Home Assistant API token not available - predictions will use mock data"
+    bashio::log.warning "Home Assistant API token not available - using mock predictions"
 fi
 
 bashio::log.info "Configuration loaded:"
