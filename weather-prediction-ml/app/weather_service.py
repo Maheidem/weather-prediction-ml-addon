@@ -8,9 +8,15 @@ import requests
 from datetime import datetime, timedelta
 from ha_mqtt_discoverable import Settings, DeviceInfo
 from ha_mqtt_discoverable.sensors import Sensor, SensorInfo
-from predictor import WeatherPredictor
 
 logger = logging.getLogger('weather_prediction_ml.service')
+
+# Use mock predictor due to Python version mismatch
+try:
+    from predictor import WeatherPredictor
+except Exception as e:
+    logger.warning(f"Failed to load real predictor: {e}")
+    from predictor_mock import WeatherPredictor
 
 class WeatherPredictionService:
     """Main service class for weather predictions"""
