@@ -1,5 +1,5 @@
 name: "Weather Prediction ML"
-version: "4.0.4"
+version: "4.0.5"
 slug: "weather_prediction_ml"
 description: "Machine learning weather prediction with 82.2% accuracy using ensemble models"
 arch:
@@ -22,6 +22,7 @@ options:
   humidity_sensor: "sensor.sensor_varanda_humidity"
   pressure_sensor: "sensor.sensor_varanda_pressure"
   log_level: "INFO"
+  ha_token: ""
 schema:
   mqtt_broker: "str"
   mqtt_port: "port"
@@ -32,6 +33,7 @@ schema:
   humidity_sensor: "str"
   pressure_sensor: "str"
   log_level: list(DEBUG|INFO|WARNING|ERROR)
+  ha_token: "str?"
 services:
   - "mqtt:need"
 homeassistant_api: true

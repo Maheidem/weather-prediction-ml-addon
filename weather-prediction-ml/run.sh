@@ -16,6 +16,7 @@ TEMP_SENSOR=$(jq -r '.temperature_sensor' $CONFIG_PATH)
 HUMIDITY_SENSOR=$(jq -r '.humidity_sensor' $CONFIG_PATH)
 PRESSURE_SENSOR=$(jq -r '.pressure_sensor' $CONFIG_PATH)
 LOG_LEVEL=$(jq -r '.log_level' $CONFIG_PATH)
+HA_TOKEN=$(jq -r '.ha_token // empty' $CONFIG_PATH)
 
 # Export environment variables for Python
 export MQTT_BROKER
@@ -28,14 +29,22 @@ export HUMIDITY_SENSOR
 export PRESSURE_SENSOR
 export LOG_LEVEL
 
-# Get the supervisor token
-export SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN:-}"
+# Get the supervisor token from config or environment
+if [ -n "${HA_TOKEN}" ]; then
+    export SUPERVISOR_TOKEN="${HA_TOKEN}"
+    bashio::log.info "Using Home Assistant API token from configuration"
+else
+    # Try to get it from the environment
+    export SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN:-}"
+fi
+
 export HOMEASSISTANT_URL="http://supervisor/core"
 
 if [ -n "${SUPERVISOR_TOKEN}" ]; then
     bashio::log.info "Home Assistant API token available"
 else
     bashio::log.warning "Home Assistant API token not available - using mock predictions"
+    bashio::log.warning "To use real sensor data, add your Home Assistant Long-Lived Access Token in the addon configuration"
 fi
 
 bashio::log.info "Configuration loaded:"

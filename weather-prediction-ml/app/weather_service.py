@@ -39,7 +39,7 @@ class WeatherPredictionService:
             identifiers=["weather_prediction_ml_addon"],
             manufacturer="Custom",
             model="Ensemble ML (XGBoost + Random Forest)",
-            sw_version="4.0.4",
+            sw_version="4.0.5",
             configuration_url="http://homeassistant.local:8123/hassio/addon/weather_prediction_ml"
         )
         
@@ -291,7 +291,7 @@ class WeatherPredictionService:
     
     def _generate_mock_history(self, sensor_type, base_value, variation):
         """Generate mock sensor history for testing"""
-        history = []
+        values = []
         now = datetime.now()
         
         # Generate 48 hours of hourly data
@@ -301,9 +301,6 @@ class WeatherPredictionService:
             value = base_value + np.random.normal(0, variation) + \
                    5 * np.sin(2 * np.pi * timestamp.hour / 24)  # Daily cycle
             
-            history.append({
-                'timestamp': timestamp.isoformat(),
-                'value': float(value)
-            })
+            values.append(float(value))
         
-        return history
+        return values
