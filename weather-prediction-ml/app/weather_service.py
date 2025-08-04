@@ -39,7 +39,7 @@ class WeatherPredictionService:
             identifiers=["weather_prediction_ml_addon"],
             manufacturer="Custom",
             model="Ensemble ML (XGBoost + Random Forest)",
-            sw_version="4.0.8",
+            sw_version="4.0.9",
             configuration_url="http://homeassistant.local:8123/hassio/addon/weather_prediction_ml"
         )
         
@@ -199,19 +199,27 @@ class WeatherPredictionService:
             humidity_history = self.get_sensor_history(self.config['humidity_sensor'])
             pressure_history = self.get_sensor_history(self.config['pressure_sensor'])
             
+            # Extract just the values from the history
+            temp_values = [entry['value'] for entry in temp_history] if temp_history else []
+            humidity_values = [entry['value'] for entry in humidity_history] if humidity_history else []
+            pressure_values = [entry['value'] for entry in pressure_history] if pressure_history else []
+            
             # Use mock data if no sensor history available
-            if not temp_history:
+            if not temp_values:
                 logger.warning("No temperature history, using mock data")
-                temp_history = self._generate_mock_history('temperature', 20, 2)
-            if not humidity_history:
+                temp_values = self._generate_mock_history('temperature', 20, 2)
+            if not humidity_values:
                 logger.warning("No humidity history, using mock data")
-                humidity_history = self._generate_mock_history('humidity', 60, 10)
-            if not pressure_history:
+                humidity_values = self._generate_mock_history('humidity', 60, 10)
+            if not pressure_values:
                 logger.warning("No pressure history, using mock data")
-                pressure_history = self._generate_mock_history('pressure', 1013, 5)
+                pressure_values = self._generate_mock_history('pressure', 1013, 5)
+            
+            # Log some stats
+            logger.info(f"Got {len(temp_values)} temperature, {len(humidity_values)} humidity, {len(pressure_values)} pressure readings")
             
             # Make prediction with separate arguments
-            result = self.predictor.predict(temp_history, humidity_history, pressure_history)
+            result = self.predictor.predict(temp_values, humidity_values, pressure_values)
             
             # Update sensors
             self._update_sensors(result)
