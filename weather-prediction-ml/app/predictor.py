@@ -232,6 +232,16 @@ class WeatherPredictor:
             xgb_proba = self.xgboost_model.predict_proba(X_scaled)[0]
             rf_proba = self.rf_model.predict_proba(X_scaled)[0]
             
+            # Handle potential shape mismatches
+            if len(xgb_proba) != len(rf_proba):
+                logger.warning(f"Shape mismatch: XGBoost {len(xgb_proba)} classes, RF {len(rf_proba)} classes")
+                # Pad the shorter array with zeros
+                max_len = max(len(xgb_proba), len(rf_proba))
+                if len(xgb_proba) < max_len:
+                    xgb_proba = np.pad(xgb_proba, (0, max_len - len(xgb_proba)), 'constant')
+                if len(rf_proba) < max_len:
+                    rf_proba = np.pad(rf_proba, (0, max_len - len(rf_proba)), 'constant')
+            
             # Ensemble prediction
             ensemble_proba = (
                 self.ensemble_weights['xgboost'] * xgb_proba +
@@ -243,11 +253,22 @@ class WeatherPredictor:
             prediction = self.label_encoder.classes_[prediction_idx]
             confidence = float(ensemble_proba[prediction_idx] * 100)
             
-            # Create probability dictionary
+            # Create probability dictionary - handle different class orders
+            # The models might have different numbers of classes or different ordering
+            prob_dict = {}
+            
+            # Map probabilities based on actual classes present
+            for i, label in enumerate(self.label_encoder.classes_):
+                if i < len(ensemble_proba):
+                    prob_dict[label] = float(ensemble_proba[i] * 100)
+                else:
+                    prob_dict[label] = 0.0
+            
+            # Ensure all three classes are present
             probabilities = {
-                'increase': float(ensemble_proba[0] * 100),
-                'stable': float(ensemble_proba[1] * 100),
-                'decrease': float(ensemble_proba[2] * 100)
+                'increase': prob_dict.get('increase', 0.0),
+                'stable': prob_dict.get('stable', 0.0),
+                'decrease': prob_dict.get('decrease', 0.0)
             }
             
             return {

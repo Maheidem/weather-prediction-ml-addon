@@ -39,7 +39,7 @@ class WeatherPredictionService:
             identifiers=["weather_prediction_ml_addon"],
             manufacturer="Custom",
             model="Ensemble ML (XGBoost + Random Forest)",
-            sw_version="4.0.5",
+            sw_version="4.0.6",
             configuration_url="http://homeassistant.local:8123/hassio/addon/weather_prediction_ml"
         )
         
