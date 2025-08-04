@@ -39,7 +39,7 @@ class WeatherPredictionService:
             identifiers=["weather_prediction_ml_addon"],
             manufacturer="Custom",
             model="Ensemble ML (XGBoost + Random Forest)",
-            sw_version="4.0.9",
+            sw_version="4.1.0",
             configuration_url="http://homeassistant.local:8123/hassio/addon/weather_prediction_ml"
         )
         
@@ -70,8 +70,8 @@ class WeatherPredictionService:
                 name="Weather Prediction",
                 unique_id="weather_prediction_ml_prediction",
                 device=device_info,
-                icon="mdi:weather-partly-cloudy",
-                state_class="measurement"
+                icon="mdi:weather-partly-cloudy"
+                # No state_class for text values
             )
         ))
         

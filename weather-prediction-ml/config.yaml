@@ -1,5 +1,5 @@
 name: "Weather Prediction ML"
-version: "4.0.9"
+version: "4.1.0"
 slug: "weather_prediction_ml"
 description: "Machine learning weather prediction with 82.2% accuracy using ensemble models"
 arch:
