@@ -39,7 +39,7 @@ class WeatherPredictionService:
             identifiers=["weather_prediction_ml_addon"],
             manufacturer="Custom",
             model="Ensemble ML (XGBoost + Random Forest)",
-            sw_version="4.0.3",
+            sw_version="4.0.4",
             configuration_url="http://homeassistant.local:8123/hassio/addon/weather_prediction_ml"
         )
         
@@ -210,15 +210,8 @@ class WeatherPredictionService:
                 logger.warning("No pressure history, using mock data")
                 pressure_history = self._generate_mock_history('pressure', 1013, 5)
             
-            # Prepare data for predictor
-            sensor_data = {
-                'temperature': temp_history,
-                'humidity': humidity_history,
-                'pressure': pressure_history
-            }
-            
-            # Make prediction
-            result = self.predictor.predict(sensor_data)
+            # Make prediction with separate arguments
+            result = self.predictor.predict(temp_history, humidity_history, pressure_history)
             
             # Update sensors
             self._update_sensors(result)
