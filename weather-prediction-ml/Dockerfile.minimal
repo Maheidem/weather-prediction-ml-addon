@@ -1,0 +1,12 @@
+ARG BUILD_FROM
+FROM $BUILD_FROM
+
+# Minimal test - just Python and MQTT
+RUN apk add --no-cache python3 py3-pip
+
+# Install only MQTT packages
+RUN python3 -m pip install --no-cache-dir paho-mqtt==1.6.1
+
+# Copy minimal test script
+COPY test.py /
+CMD ["python3", "/test.py"]
