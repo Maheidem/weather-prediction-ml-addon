@@ -1,0 +1,32 @@
+ARG BUILD_FROM
+FROM $BUILD_FROM
+
+# Set Python environment variables
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1
+
+# Install only essential dependencies
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    py3-numpy \
+    curl \
+    jq
+
+# Install minimal Python packages
+RUN python3 -m pip install \
+    paho-mqtt==1.6.1 \
+    ha-mqtt-discoverable==0.13.1 \
+    requests==2.31.0 \
+    pandas==2.0.3
+
+# Copy application files
+COPY app_lite /app
+COPY run.sh /run.sh
+RUN chmod a+x /run.sh
+
+# Set working directory
+WORKDIR /app
+
+CMD [ "/run.sh" ]

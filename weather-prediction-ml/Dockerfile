@@ -21,17 +21,24 @@ RUN apk add --no-cache \
     libgomp \
     cmake \
     jq \
-    curl
+    curl \
+    py3-numpy \
+    py3-scipy
 
 # Upgrade pip
 RUN python3 -m pip install --upgrade pip setuptools wheel
 
-# Install ML dependencies step by step
-RUN python3 -m pip install numpy==1.24.4
+# Install Cython first (required for scikit-learn from source)
+RUN python3 -m pip install Cython
+
+# Install ML dependencies - use any available version or build from source
 RUN python3 -m pip install pandas==2.0.3
-RUN python3 -m pip install scikit-learn==1.3.0
-RUN python3 -m pip install xgboost==1.7.6
-RUN python3 -m pip install joblib==1.3.1
+RUN python3 -m pip install --no-build-isolation scikit-learn || \
+    python3 -m pip install scikit-learn==1.2.2 || \
+    python3 -m pip install scikit-learn
+RUN python3 -m pip install xgboost==1.7.6 || \
+    python3 -m pip install xgboost
+RUN python3 -m pip install joblib
 
 # Install MQTT and other dependencies
 RUN python3 -m pip install \
