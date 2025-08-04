@@ -47,10 +47,14 @@ class WeatherPredictionService:
         self.sensors = self._create_sensors(mqtt_settings, device_info)
         
         # Home Assistant API headers
-        self.ha_headers = {
-            "Authorization": f"Bearer {config['ha_token']}",
-            "Content-Type": "application/json"
-        }
+        self.ha_headers = {}
+        if config.get('ha_token'):
+            self.ha_headers = {
+                "Authorization": f"Bearer {config['ha_token']}",
+                "Content-Type": "application/json"
+            }
+        else:
+            logger.warning("No Home Assistant token available, sensor history will not be available")
         
         logger.info("Service initialized successfully")
     
@@ -156,6 +160,9 @@ class WeatherPredictionService:
         }
         
         try:
+            if not self.ha_headers:
+                logger.warning("Cannot get sensor history without HA token")
+                return []
             response = requests.get(url, headers=self.ha_headers, params=params)
             response.raise_for_status()
             

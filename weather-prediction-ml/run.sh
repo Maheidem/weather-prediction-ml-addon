@@ -1,6 +1,6 @@
 #!/usr/bin/env bashio
 
-# Enable strict error handling
+# Enable error handling
 set -e
 
 bashio::log.info "Starting Weather Prediction ML addon..."
@@ -17,10 +17,6 @@ HUMIDITY_SENSOR=$(jq -r '.humidity_sensor' $CONFIG_PATH)
 PRESSURE_SENSOR=$(jq -r '.pressure_sensor' $CONFIG_PATH)
 LOG_LEVEL=$(jq -r '.log_level' $CONFIG_PATH)
 
-# Get Home Assistant API token and URL
-SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN}"
-HOMEASSISTANT_URL="http://supervisor/core"
-
 # Export environment variables for Python
 export MQTT_BROKER
 export MQTT_PORT
@@ -31,8 +27,15 @@ export TEMP_SENSOR
 export HUMIDITY_SENSOR
 export PRESSURE_SENSOR
 export LOG_LEVEL
-export SUPERVISOR_TOKEN
-export HOMEASSISTANT_URL
+
+# Try to get the supervisor token using bashio
+if bashio::var.has_value "supervisor_token"; then
+    export SUPERVISOR_TOKEN=$(bashio::var.supervisor_token)
+    export HOMEASSISTANT_URL="http://supervisor/core"
+    bashio::log.info "Home Assistant API token obtained"
+else
+    bashio::log.warning "Home Assistant API token not available - predictions will use mock data"
+fi
 
 bashio::log.info "Configuration loaded:"
 bashio::log.info "  MQTT Broker: ${MQTT_BROKER}:${MQTT_PORT}"
