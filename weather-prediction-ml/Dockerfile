@@ -1,6 +1,11 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
+# Set Python environment variables
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1
+
 # Install only essential dependencies
 RUN apk add --no-cache \
     python3 \
@@ -9,7 +14,8 @@ RUN apk add --no-cache \
     jq
 
 # Install minimal Python packages
-RUN python3 -m pip install --no-cache-dir \
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install \
     paho-mqtt==1.6.1 \
     ha-mqtt-discoverable==0.13.1 \
     requests==2.31.0
