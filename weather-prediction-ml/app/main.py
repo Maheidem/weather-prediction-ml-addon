@@ -39,6 +39,16 @@ def main():
     logger.info("Weather Prediction ML Addon starting...")
     
     # Load configuration from environment
+    ha_token = os.environ.get('SUPERVISOR_TOKEN')
+    
+    # Determine the correct HA URL based on token type
+    # Long-lived tokens need direct API access, not through supervisor
+    ha_url = os.environ.get('HOMEASSISTANT_URL', 'http://supervisor/core')
+    if ha_token and len(ha_token) > 100:  # Long-lived tokens are typically longer
+        # This is likely a Long-Lived Access Token, use direct API
+        ha_url = 'http://homeassistant.local:8123'
+        logger.info("Detected Long-Lived Access Token, using direct API access")
+    
     config = {
         'mqtt_broker': os.environ.get('MQTT_BROKER', 'core-mosquitto'),
         'mqtt_port': int(os.environ.get('MQTT_PORT', 1883)),
@@ -48,8 +58,8 @@ def main():
         'temperature_sensor': os.environ.get('TEMP_SENSOR'),
         'humidity_sensor': os.environ.get('HUMIDITY_SENSOR'),
         'pressure_sensor': os.environ.get('PRESSURE_SENSOR'),
-        'ha_token': os.environ.get('SUPERVISOR_TOKEN'),
-        'ha_url': os.environ.get('HOMEASSISTANT_URL', 'http://supervisor/core')
+        'ha_token': ha_token,
+        'ha_url': ha_url
     }
     
     logger.info(f"Configuration loaded: {json.dumps({k: v for k, v in config.items() if k not in ['mqtt_password', 'ha_token']}, indent=2)}")
