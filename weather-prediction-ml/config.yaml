@@ -35,4 +35,3 @@ schema:
 services:
   - "mqtt:need"
 homeassistant_api: true
-image: "ghcr.io/maheidem/{arch}-weather-prediction-ml"
