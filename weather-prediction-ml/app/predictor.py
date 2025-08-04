@@ -1,4 +1,4 @@
-"""ML Predictor for Weather Prediction"""
+"""ML Predictor for Weather Prediction - Fixed version"""
 
 import os
 import json
@@ -74,6 +74,38 @@ class WeatherPredictor:
         """Create all features from raw weather data - matching training features"""
         df = df.copy()
         
+        # First, add the base aggregated features that the model expects
+        # These would normally come from hourly aggregations
+        if 'temperature' in df.columns and 'temperature_mean' not in df.columns:
+            # Create hourly aggregations from the raw data
+            df['temperature_mean'] = df['temperature'].rolling(window=60, min_periods=1).mean()
+            df['temperature_min'] = df['temperature'].rolling(window=60, min_periods=1).min()
+            df['temperature_max'] = df['temperature'].rolling(window=60, min_periods=1).max()
+            df['humidity_mean'] = df['humidity'].rolling(window=60, min_periods=1).mean()
+            df['humidity_min'] = df['humidity'].rolling(window=60, min_periods=1).min()
+            df['humidity_max'] = df['humidity'].rolling(window=60, min_periods=1).max()
+            
+            if 'pressure' in df.columns:
+                df['pressure_mean'] = df['pressure'].rolling(window=60, min_periods=1).mean()
+                df['pressure_min'] = df['pressure'].rolling(window=60, min_periods=1).min()
+                df['pressure_max'] = df['pressure'].rolling(window=60, min_periods=1).max()
+            else:
+                # Use default pressure if not available
+                df['pressure'] = 1013.25
+                df['pressure_mean'] = 1013.25
+                df['pressure_min'] = 1013.25
+                df['pressure_max'] = 1013.25
+            
+            # Additional base features
+            df['temperature_range'] = df['temperature_max'] - df['temperature_min']
+            df['humidity_range'] = df['humidity_max'] - df['humidity_min']
+            df['day_of_week'] = df.index.dayofweek
+            
+            # Solar features (simplified)
+            df['solar_azimuth'] = 180  # Placeholder
+            df['solar_elevation'] = 45  # Placeholder
+            df['atmosphere_pressure'] = df['pressure_mean']
+        
         # Temporal features
         df['hour'] = df.index.hour
         df['day_of_year'] = df.index.dayofyear
@@ -92,8 +124,7 @@ class WeatherPredictor:
         for lag in critical_lags:
             df[f'temp_lag_{lag}'] = df['temperature'].shift(lag)
             df[f'humidity_lag_{lag}'] = df['humidity'].shift(lag)
-            if 'pressure' in df.columns:
-                df[f'pressure_lag_{lag}'] = df['pressure'].shift(lag)
+            df[f'pressure_lag_{lag}'] = df['pressure'].shift(lag)
         
         # Rolling statistics
         windows = [6, 12, 24, 48]
@@ -101,8 +132,8 @@ class WeatherPredictor:
             # Temperature
             df[f'temp_mean_{window}h'] = df['temperature'].rolling(window, center=True).mean()
             df[f'temp_std_{window}h'] = df['temperature'].rolling(window, center=True).std()
-            df[f'temp_min_{window}h'] = df['temperature'].rolling(window, center=True).min()
-            df[f'temp_max_{window}h'] = df['temperature'].rolling(window, center=True).max()
+            df[f'temp_min_{window}h'] = df['temperature'].rolling(window).min()
+            df[f'temp_max_{window}h'] = df['temperature'].rolling(window).max()
             df[f'temp_range_{window}h'] = df[f'temp_max_{window}h'] - df[f'temp_min_{window}h']
             
             # Humidity
@@ -110,32 +141,28 @@ class WeatherPredictor:
             df[f'humidity_std_{window}h'] = df['humidity'].rolling(window, center=True).std()
             
             # Pressure
-            if 'pressure' in df.columns:
-                df[f'pressure_mean_{window}h'] = df['pressure'].rolling(window, center=True).mean()
-                df[f'pressure_std_{window}h'] = df['pressure'].rolling(window, center=True).std()
+            df[f'pressure_mean_{window}h'] = df['pressure'].rolling(window, center=True).mean()
+            df[f'pressure_std_{window}h'] = df['pressure'].rolling(window, center=True).std()
         
-        # Rate of change
+        # Change features
         for hours in [1, 3, 6, 12, 24]:
             df[f'temp_change_{hours}h'] = df['temperature'].diff(hours)
             df[f'temp_pct_change_{hours}h'] = df['temperature'].pct_change(hours)
             df[f'humidity_change_{hours}h'] = df['humidity'].diff(hours)
-            if 'pressure' in df.columns:
-                df[f'pressure_change_{hours}h'] = df['pressure'].diff(hours)
+            df[f'pressure_change_{hours}h'] = df['pressure'].diff(hours)
         
-        # EMA
+        # Exponential moving averages
         for span in [6, 12, 24]:
             df[f'temp_ema_{span}'] = df['temperature'].ewm(span=span).mean()
             df[f'humidity_ema_{span}'] = df['humidity'].ewm(span=span).mean()
-            if 'pressure' in df.columns:
-                df[f'pressure_ema_{span}'] = df['pressure'].ewm(span=span).mean()
+            df[f'pressure_ema_{span}'] = df['pressure'].ewm(span=span).mean()
         
-        # Interactions
-        df['temp_humidity_ratio'] = df['temperature'] / (df['humidity'] + 1e-8)
-        if 'pressure' in df.columns:
-            df['temp_pressure_interaction'] = df['temperature'] * df['pressure'] / 1000
-            df['humidity_pressure_interaction'] = df['humidity'] * df['pressure'] / 1000
+        # Feature interactions
+        df['temp_humidity_ratio'] = df['temperature'] / (df['humidity'] + 1)
+        df['temp_pressure_interaction'] = df['temperature'] * df['pressure']
+        df['humidity_pressure_interaction'] = df['humidity'] * df['pressure']
         
-        # Weather features
+        # Weather indices
         df['dewpoint'] = df['temperature'] - ((100 - df['humidity']) / 5)
         df['heat_index'] = df['temperature'] + 0.5 * (df['humidity'] - 50)
         df['temp_volatility_6h'] = df['temperature'].rolling(6).std()
@@ -149,74 +176,53 @@ class WeatherPredictor:
         
         return df
     
-    def predict(self, sensor_data):
-        """Make a weather prediction"""
+    def predict(self, temperature_data, humidity_data, pressure_data):
+        """Make a weather prediction based on sensor data"""
         try:
-            # Convert sensor data to DataFrame
-            df_data = self._sensor_data_to_dataframe(sensor_data)
+            # Create DataFrame from sensor data
+            if len(temperature_data) != len(humidity_data):
+                logger.warning("Temperature and humidity data length mismatch")
+                # Align to shortest length
+                min_len = min(len(temperature_data), len(humidity_data))
+                temperature_data = temperature_data[:min_len]
+                humidity_data = humidity_data[:min_len]
             
-            if df_data is None or len(df_data) < 48:
-                logger.warning("Insufficient data for ML prediction, using fallback")
-                return self._predict_with_fallback(sensor_data)
+            # Create time index
+            now = pd.Timestamp.now()
+            time_index = pd.date_range(end=now, periods=len(temperature_data), freq='H')
+            
+            # Create DataFrame
+            df = pd.DataFrame({
+                'temperature': temperature_data,
+                'humidity': humidity_data,
+                'pressure': pressure_data if len(pressure_data) == len(temperature_data) else [1013.25] * len(temperature_data)
+            }, index=time_index)
             
             # Create features
-            df_features = self.create_features_from_data(df_data)
+            df_features = self.create_features_from_data(df)
             
             if self.models_loaded:
                 return self._predict_with_models(df_features)
             else:
-                return self._predict_with_fallback(sensor_data)
+                return self._predict_with_fallback(df_features)
                 
         except Exception as e:
-            logger.error(f"Prediction error: {e}", exc_info=True)
-            return self._default_prediction()
-    
-    def _sensor_data_to_dataframe(self, sensor_data):
-        """Convert sensor data from HA to DataFrame"""
-        try:
-            # Combine all sensor data into single DataFrame
-            all_data = []
-            
-            # Process each sensor type
-            for sensor_type in ['temperature', 'humidity', 'pressure']:
-                if sensor_type not in sensor_data or not sensor_data[sensor_type]:
-                    continue
-                    
-                for entry in sensor_data[sensor_type]:
-                    timestamp = pd.to_datetime(entry['timestamp'])
-                    value = float(entry['value'])
-                    
-                    # Find existing entry or create new
-                    existing = next((d for d in all_data if d['timestamp'] == timestamp), None)
-                    if existing:
-                        existing[sensor_type] = value
-                    else:
-                        all_data.append({
-                            'timestamp': timestamp,
-                            sensor_type: value
-                        })
-            
-            if not all_data:
-                return None
-                
-            # Create DataFrame
-            df = pd.DataFrame(all_data)
-            df.set_index('timestamp', inplace=True)
-            df.sort_index(inplace=True)
-            
-            # Fill missing values
-            df = df.interpolate(method='time').fillna(method='bfill').fillna(method='ffill')
-            
-            return df
-            
-        except Exception as e:
-            logger.error(f"Error converting sensor data: {e}")
-            return None
+            logger.error(f"Prediction error: {e}")
+            # Return a safe default prediction
+            return {
+                'prediction': 'stable',
+                'confidence': 70.0,
+                'probabilities': {
+                    'increase': 30.0,
+                    'decrease': 30.0,
+                    'stable': 40.0
+                }
+            }
     
     def _predict_with_models(self, df_features):
-        """Make prediction using actual ML models"""
+        """Make prediction using loaded ML models"""
         try:
-            # Get the latest feature row
+            # Get the last row with all required features
             X = df_features[self.feature_columns].iloc[-1:].fillna(0)
             
             # Scale features
@@ -226,7 +232,7 @@ class WeatherPredictor:
             xgb_proba = self.xgboost_model.predict_proba(X_scaled)[0]
             rf_proba = self.rf_model.predict_proba(X_scaled)[0]
             
-            # Weighted ensemble
+            # Ensemble prediction
             ensemble_proba = (
                 self.ensemble_weights['xgboost'] * xgb_proba +
                 self.ensemble_weights['random_forest'] * rf_proba
@@ -234,97 +240,107 @@ class WeatherPredictor:
             
             # Get prediction
             prediction_idx = np.argmax(ensemble_proba)
-            prediction = self.label_encoder.inverse_transform([prediction_idx])[0]
+            prediction = self.label_encoder.classes_[prediction_idx]
             confidence = float(ensemble_proba[prediction_idx] * 100)
             
-            # Get class probabilities
-            classes = self.label_encoder.classes_
+            # Create probability dictionary
             probabilities = {
-                cls: float(prob * 100) 
-                for cls, prob in zip(classes, ensemble_proba)
+                'increase': float(ensemble_proba[0] * 100),
+                'stable': float(ensemble_proba[1] * 100),
+                'decrease': float(ensemble_proba[2] * 100)
             }
             
-            result = {
+            return {
                 'prediction': prediction,
                 'confidence': confidence,
-                'probabilities': probabilities,
-                'timestamp': datetime.now().isoformat(),
-                'model_used': 'ensemble_ml'
+                'probabilities': probabilities
             }
-            
-            logger.info(f"ML prediction: {prediction} ({confidence:.1f}%)")
-            return result
             
         except Exception as e:
             logger.error(f"Error in ML prediction: {e}")
-            return self._predict_with_fallback(sensor_data)
+            import traceback
+            traceback.print_exc()
+            # Fall back to intelligent prediction
+            return self._predict_with_fallback(df_features)
     
-    def _predict_with_fallback(self, sensor_data):
-        """Fallback prediction using meteorological logic"""
-        # Extract latest values
-        latest_temp = sensor_data['temperature'][-1]['value'] if sensor_data.get('temperature') else 20
-        latest_humidity = sensor_data['humidity'][-1]['value'] if sensor_data.get('humidity') else 60
-        latest_pressure = sensor_data['pressure'][-1]['value'] if sensor_data.get('pressure') else 1013
-        
-        # Calculate trends
-        temp_trend = self._calculate_trend([d['value'] for d in sensor_data.get('temperature', [])[-10:]])
-        humidity_trend = self._calculate_trend([d['value'] for d in sensor_data.get('humidity', [])[-10:]])
-        pressure_trend = self._calculate_trend([d['value'] for d in sensor_data.get('pressure', [])[-10:]])
-        
-        # Weather prediction logic
-        if latest_pressure < 1000:
-            prediction = 'decrease'
-            confidence = 85.0
-        elif latest_pressure > 1020 and latest_humidity < 50:
-            prediction = 'increase'
-            confidence = 88.0
-        elif pressure_trend < -0.5:
-            prediction = 'decrease'
-            confidence = 87.0
-        elif temp_trend > 0.5 and humidity_trend < -0.5:
-            prediction = 'increase'
-            confidence = 82.0
-        elif temp_trend < -0.5:
-            prediction = 'decrease'
-            confidence = 79.0
-        else:
-            prediction = 'stable'
-            confidence = 75.0
-        
-        probabilities = self._calculate_probabilities(prediction, confidence)
-        
-        return {
-            'prediction': prediction,
-            'confidence': confidence,
-            'probabilities': probabilities,
-            'timestamp': datetime.now().isoformat(),
-            'model_used': 'fallback_logic'
-        }
-    
-    def _calculate_trend(self, values):
-        """Calculate trend from values"""
-        if len(values) < 2:
-            return 0
-        return (values[-1] - values[0]) / len(values)
-    
-    def _calculate_probabilities(self, prediction, confidence):
-        """Calculate probability distribution"""
-        probs = {'increase': 33.3, 'decrease': 33.3, 'stable': 33.4}
-        probs[prediction] = confidence
-        remaining = 100 - confidence
-        
-        for key in probs:
-            if key != prediction:
-                probs[key] = remaining / 2
-        
-        return probs
-    
-    def _default_prediction(self):
-        """Default prediction when everything fails"""
-        return {
-            'prediction': 'stable',
-            'confidence': 70.0,
-            'probabilities': {'increase': 30.0, 'decrease': 30.0, 'stable': 40.0},
-            'timestamp': datetime.now().isoformat(),
-            'model_used': 'default'
-        }
+    def _predict_with_fallback(self, df):
+        """Intelligent fallback prediction based on meteorological principles"""
+        try:
+            # Get latest values
+            latest = df.iloc[-1]
+            temp = latest.get('temperature', 20)
+            humidity = latest.get('humidity', 50)
+            pressure = latest.get('pressure', 1013.25)
+            
+            # Get recent trends
+            temp_change = df['temperature'].iloc[-6:].mean() - df['temperature'].iloc[-12:-6].mean()
+            humidity_change = df['humidity'].iloc[-6:].mean() - df['humidity'].iloc[-12:-6].mean()
+            pressure_change = df['pressure'].iloc[-6:].mean() - df['pressure'].iloc[-12:-6].mean() if 'pressure' in df else 0
+            
+            # Simple meteorological rules
+            score_increase = 0
+            score_decrease = 0
+            score_stable = 0
+            
+            # Pressure-based prediction
+            if pressure < 1000:  # Low pressure
+                score_decrease += 30
+            elif pressure > 1020:  # High pressure
+                score_increase += 20
+            else:
+                score_stable += 20
+            
+            # Temperature trend
+            if temp_change > 1:
+                score_increase += 25
+            elif temp_change < -1:
+                score_decrease += 25
+            else:
+                score_stable += 20
+            
+            # Humidity indicators
+            if humidity > 80 and humidity_change > 0:
+                score_decrease += 20
+            elif humidity < 40 and humidity_change < 0:
+                score_increase += 15
+            
+            # Pressure trend is very important
+            if pressure_change < -2:
+                score_decrease += 30
+            elif pressure_change > 2:
+                score_increase += 25
+            
+            # Normalize scores
+            total = score_increase + score_decrease + score_stable + 1
+            prob_increase = score_increase / total * 100
+            prob_decrease = score_decrease / total * 100
+            prob_stable = score_stable / total * 100
+            
+            # Determine prediction
+            probs = {'increase': prob_increase, 'decrease': prob_decrease, 'stable': prob_stable}
+            prediction = max(probs, key=probs.get)
+            confidence = probs[prediction]
+            
+            # Ensure minimum confidence
+            if confidence < 40:
+                prediction = 'stable'
+                confidence = 50.0
+                probs = {'increase': 25.0, 'decrease': 25.0, 'stable': 50.0}
+            
+            return {
+                'prediction': prediction,
+                'confidence': confidence,
+                'probabilities': probs
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in fallback prediction: {e}")
+            return {
+                'prediction': 'stable',
+                'confidence': 70.0,
+                'probabilities': {
+                    'increase': 30.0,
+                    'decrease': 30.0,
+                    'stable': 40.0
+                }
+            }
