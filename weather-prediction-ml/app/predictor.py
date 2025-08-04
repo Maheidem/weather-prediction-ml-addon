@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
+from .model_loader import PortableModelLoader
 
 logger = logging.getLogger('weather_prediction_ml.predictor')
 
@@ -33,19 +34,26 @@ class WeatherPredictor:
         
         logger.info(f"Loading models with {self.config['test_accuracy']:.1%} accuracy")
         
-        # Try to load models
-        with open(self.models_dir / 'final_xgboost_model.pkl', 'rb') as f:
-            self.xgboost_model = pickle.load(f)
+        # Use portable loader for better compatibility
+        loader = PortableModelLoader()
         
-        with open(self.models_dir / 'final_rf_model.pkl', 'rb') as f:
-            self.rf_model = pickle.load(f)
+        # Try to load models with fallback strategies
+        self.xgboost_model = loader.load_xgboost(
+            str(self.models_dir / 'final_xgboost_model.pkl')
+        )
+        
+        self.rf_model = loader.load_random_forest(
+            str(self.models_dir / 'final_rf_model.pkl')
+        )
         
         # Load preprocessors
-        with open(self.models_dir / 'final_scaler.pkl', 'rb') as f:
-            self.scaler = pickle.load(f)
+        self.scaler = loader.load_scaler(
+            str(self.models_dir / 'final_scaler.pkl')
+        )
         
-        with open(self.models_dir / 'final_label_encoder.pkl', 'rb') as f:
-            self.label_encoder = pickle.load(f)
+        self.label_encoder = loader.load_label_encoder(
+            str(self.models_dir / 'final_label_encoder.pkl')
+        )
         
         self.feature_columns = self.config['feature_columns']
         self.ensemble_weights = self.config['ensemble_weights']
