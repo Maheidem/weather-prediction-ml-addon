@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
-from .model_loader import PortableModelLoader
+from model_loader import PortableModelLoader
 
 logger = logging.getLogger('weather_prediction_ml.predictor')
 
