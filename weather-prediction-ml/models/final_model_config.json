@@ -1,18 +1,12 @@
 {
   "best_model": "Ensemble",
-  "test_accuracy": 0.8220382824624936,
-  "xgboost_accuracy": 0.8215209518882566,
-  "random_forest_accuracy": 0.8096223486808071,
-  "ensemble_accuracy": 0.8220382824624936,
+  "test_accuracy": 0.8980858768753234,
+  "xgboost_accuracy": 0.900672529746508,
+  "random_forest_accuracy": 0.8732540093119503,
+  "ensemble_accuracy": 0.8980858768753234,
   "ensemble_weights": {
-    "xgboost": 0.5086024750980984,
-    "random_forest": 0.4913975249019016
-  },
-  "cross_validation": {
-    "xgboost_cv_mean": 0.9194761010535533,
-    "xgboost_cv_std": 0.010232186562009629,
-    "rf_cv_mean": 0.8878643994426634,
-    "rf_cv_std": 0.010610486579797834
+    "xgboost": 0.5077282006415865,
+    "random_forest": 0.49227179935841353
   },
   "feature_columns": [
     "temperature_mean",
@@ -24,7 +18,10 @@
     "pressure_mean",
     "pressure_min",
     "pressure_max",
+    "hour",
     "day_of_week",
+    "month",
+    "day_of_year",
     "temperature_range",
     "humidity_range",
     "solar_azimuth",
@@ -140,17 +137,11 @@
     "increase",
     "stable"
   ],
-  "class_distribution": {
-    "decrease": 3966,
-    "increase": 4405,
-    "stable": 4510
-  },
-  "data_info": {
-    "total_samples": 12881,
-    "train_samples": 9016,
-    "val_samples": 1932,
-    "test_samples": 1933,
-    "features": 119
-  },
-  "training_date": "2025-08-03T00:33:26.113117"
+  "training_date": "2025-08-04T16:37:18.060093",
+  "environment": {
+    "python_version": "3.11",
+    "os": "Alpine Linux 3.19",
+    "xgboost_version": "3.0.3",
+    "sklearn_version": "1.5.1"
+  }
 }
